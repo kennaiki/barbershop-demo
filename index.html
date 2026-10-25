@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Барбершоп «Кедр» — стрижки и борода в центре города</title>
+<meta name="description" content="Мужские стрижки, уход за бородой и бритьё опасной бритвой. Запись онлайн.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#14213d; --red:#c8352e; --paper:#f7f5f0; --ink:#1b1b1f; --muted:#5b6070; --line:#d9d6cc;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --paper:#0f1626; --ink:#f1efe8; --muted:#a3a9ba; --line:#2a3550; --navy:#0a1020; }
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{font-family:Manrope,system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;font-size:17px}
+h1,h2,h3{font-family:Oswald,Impact,sans-serif;text-transform:uppercase;letter-spacing:.02em;line-height:1.05}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--red);outline-offset:3px}
+.wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+
+/* hero */
+.hero{background:var(--navy);color:#f7f5f0;overflow:hidden}
+.hero .wrap{display:grid;grid-template-columns:1fr 150px;gap:40px;align-items:center;padding-top:56px;padding-bottom:56px}
+.brand{font-family:Oswald,sans-serif;font-weight:700;font-size:20px;margin-bottom:56px}
+.hero h1{font-size:clamp(44px,9vw,92px);font-weight:700}
+.hero p{max-width:34em;margin:24px 0 32px;color:#cfd3de}
+.btn{display:inline-block;background:var(--red);color:#fff;text-decoration:none;font-weight:600;padding:16px 28px;border:0;font:inherit;font-weight:600;cursor:pointer}
+.btn:hover{background:#a82a24}
+.pole{height:360px;border-radius:75px/24px;border:6px solid #f7f5f0;
+  background:repeating-linear-gradient(-35deg,var(--red) 0 28px,#f7f5f0 28px 56px,#2b4a8a 56px 84px,#f7f5f0 84px 112px);
+  background-size:100% 112px;animation:spin 3s linear infinite}
+@keyframes spin{to{background-position:0 112px}}
+@media (prefers-reduced-motion:reduce){.pole{animation:none}}
+
+section{padding:72px 0;border-bottom:1px solid var(--line)}
+h2{font-size:clamp(32px,5vw,48px);margin-bottom:32px}
+
+/* prices */
+.prices{list-style:none;padding:0}
+.prices li{display:flex;align-items:baseline;gap:12px;padding:16px 0;border-bottom:1px dashed var(--line)}
+.prices .name{font-weight:600}
+.prices .desc{color:var(--muted);font-size:15px;display:block;font-weight:400}
+.prices .dots{flex:1}
+.prices .cost{font-family:Oswald,sans-serif;font-size:24px;font-weight:700;white-space:nowrap}
+
+/* info */
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:32px}
+.info h3{font-size:22px;margin-bottom:8px;color:var(--red)}
+.info td{padding:2px 24px 2px 0}
+
+/* form */
+form{display:grid;gap:16px;max-width:460px}
+label{font-weight:600;font-size:15px;display:grid;gap:6px}
+input,select{font:inherit;padding:14px;border:2px solid var(--line);background:var(--paper);color:var(--ink);border-radius:0}
+.ok{display:none;margin-top:16px;padding:16px;border-left:6px solid var(--red);background:var(--navy);color:#fff;max-width:460px}
+footer{padding:32px 0;color:var(--muted);font-size:14px}
+@media (max-width:640px){.hero .wrap{grid-template-columns:1fr}.pole{display:none}.brand{margin-bottom:32px}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <div class="brand">Барбершоп «Кедр»</div>
+      <h1>Стрижка, которую заметят</h1>
+      <p>Мужские стрижки, борода и бритьё опасной бритвой. Без очередей: записывайся на удобное время, мастер ждёт тебя к назначенной минуте.</p>
+      <a class="btn" href="#zapis">Записаться</a>
+    </div>
+    <div class="pole" aria-hidden="true"></div>
+  </div>
+</header>
+
+<main>
+  <section id="uslugi">
+    <div class="wrap">
+      <h2>Услуги и цены</h2>
+      <ul class="prices">
+        <li><span class="name">Мужская стрижка<span class="desc">Мытьё головы и укладка включены, 60 минут</span></span><span class="dots"></span><span class="cost">1 800 ₽</span></li>
+        <li><span class="name">Стрижка машинкой<span class="desc">Одна насадка, контур, 30 минут</span></span><span class="dots"></span><span class="cost">1 000 ₽</span></li>
+        <li><span class="name">Моделирование бороды<span class="desc">Форма, контур, масло для ухода, 40 минут</span></span><span class="dots"></span><span class="cost">1 200 ₽</span></li>
+        <li><span class="name">Бритьё опасной бритвой<span class="desc">Горячее полотенце, пена, лосьон, 45 минут</span></span><span class="dots"></span><span class="cost">1 500 ₽</span></li>
+        <li><span class="name">Стрижка и борода<span class="desc">Полный комплект, 90 минут</span></span><span class="dots"></span><span class="cost">2 700 ₽</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="kontakty">
+    <div class="wrap info">
+      <div>
+        <h3>Адрес</h3>
+        <p>ул. Кедровая, 12<br>2 минуты от метро «Центральная»</p>
+      </div>
+      <div>
+        <h3>Часы работы</h3>
+        <table>
+          <tr><td>Пн–Пт</td><td>10:00–21:00</td></tr>
+          <tr><td>Сб</td><td>10:00–20:00</td></tr>
+          <tr><td>Вс</td><td>11:00–18:00</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3>Связь</h3>
+        <p><a href="tel:+70000000000">+7 (000) 000-00-00</a><br><a href="https://t.me/">Telegram</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="zapis">
+    <div class="wrap">
+      <h2>Запись</h2>
+      <form id="f">
+        <label>Имя<input name="name" required autocomplete="given-name"></label>
+        <label>Телефон<input name="phone" type="tel" required autocomplete="tel" placeholder="+7"></label>
+        <label>Услуга
+          <select name="service">
+            <option>Мужская стрижка</option>
+            <option>Стрижка машинкой</option>
+            <option>Моделирование бороды</option>
+            <option>Бритьё опасной бритвой</option>
+            <option>Стрижка и борода</option>
+          </select>
+        </label>
+        <label>Удобное время<input name="time" type="datetime-local" required></label>
+        <button class="btn" type="submit">Отправить заявку</button>
+      </form>
+      <p class="ok" id="ok" role="status">Заявка принята. Мы перезвоним в течение 15 минут и подтвердим время.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">© Барбершоп «Кедр». Учебный демо-проект.</div>
+</footer>
+
+<script>
+// Демо: форма пока ничего не отправляет. Позже подключим отправку в Telegram или Google Таблицу.
+document.getElementById('f').addEventListener('submit', function(e){
+  e.preventDefault();
+  this.style.display = 'none';
+  document.getElementById('ok').style.display = 'block';
+});
+</script>
+</body>
+</html>
