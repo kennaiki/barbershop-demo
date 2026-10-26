@@ -98,7 +98,7 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
 <header class="hero">
   <div class="wrap">
     <div>
-      <div class="brand">Барбершоп «Стрижки от kennai»</div>
+      <div class="brand" id="brand"></div>
       <h1>Стрижка, которую заметят</h1>
       <p>Мужские стрижки, борода и бритьё опасной бритвой. Без очередей: записывайся на удобное время, мастер ждёт тебя к назначенной минуте.</p>
       <a class="btn" href="#zapis">Записаться</a>
@@ -129,19 +129,15 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
     <div class="wrap info">
       <div>
         <h3>Адрес</h3>
-        <p>ул. Кедровая, 12<br>2 минуты от метро «Центральная»</p>
+        <p id="addr"></p>
       </div>
       <div>
         <h3>Часы работы</h3>
-        <table>
-          <tr><td>Пн–Пт</td><td>10:00–21:00</td></tr>
-          <tr><td>Сб</td><td>10:00–20:00</td></tr>
-          <tr><td>Вс</td><td>11:00–18:00</td></tr>
-        </table>
+        <table id="hrs"></table>
       </div>
       <div>
         <h3>Связь</h3>
-        <p><a href="tel:+70000000000">+7 (000) 000-00-00</a><br><a href="https://t.me/">Telegram</a></p>
+        <p><a id="phone" href="#"></a><br><a href="https://t.me/">Telegram</a></p>
       </div>
     </div>
   </section>
@@ -166,32 +162,36 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
 </main>
 
 <footer>
-  <div class="wrap">© Барбершоп «Стрижки от kennai». Учебный демо-проект. <a href="privacy.html">Политика конфиденциальности</a> · <a href="soglasie.html">Согласие на обработку данных</a></div>
+  <div class="wrap">© <span id="fbrand"></span>. Учебный демо-проект. <a href="privacy.html">Политика конфиденциальности</a> · <a href="soglasie.html">Согласие на обработку данных</a></div>
 </footer>
 
 <script>
 var WORKER_URL = 'https://barber-zayavki.kenny-ki.workers.dev';
-var AHEAD = 30; // на сколько дней вперёд можно записаться (то же число в worker.js)
+var DAYKEYS = {'Пн':1,'Вт':2,'Ср':3,'Чт':4,'Пт':5,'Сб':6,'Вс':0};
+// "10:00-21:00" -> [10, 21]; пустая строка = выходной
+function parseHours(o){
+  var r = {};
+  Object.keys(o).forEach(function(k){
+    var m = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/.exec(String(o[k]).trim());
+    if (m && k in DAYKEYS) r[DAYKEYS[k]] = [+m[1] + m[2] / 60, +m[3] + m[4] / 60];
+  });
+  return r;
+}
 
-// Услуги: n - название, d - описание, m - минуты, p - цена. Цены меняются только здесь.
-var SERVICES = [
-  {n:'Мужская стрижка', d:'Мытьё головы и укладка включены', m:60, p:1800},
-  {n:'Стрижка машинкой', d:'Одна насадка, контур', m:30, p:1000},
-  {n:'Моделирование бороды', d:'Форма, контур, масло для ухода', m:40, p:1200},
-  {n:'Бритьё опасной бритвой', d:'Горячее полотенце, пена, лосьон', m:45, p:1500},
-  {n:'Стрижка и борода', d:'Полный комплект', m:90, p:2700}
-];
-// Мастера: фото кладутся в корень репозитория как m1.jpg ... m6.jpg. Расписание: дни недели (0 = воскресенье), часы.
-function H(){ var o = {}; for (var i = 0; i < arguments.length; i++){ (function(r){ r[0].forEach(function(d){ o[d] = [r[1], r[2]]; }); })(arguments[i]); } return o; }
-var MASTERS = [
-  {id:'m1', name:'Артём Волков', exp:'12 лет', h:H([[1,2,3,4,5],10,21],[[6],10,20])},
-  {id:'m2', name:'Дмитрий Орлов', exp:'8 лет', h:H([[1,2,3,4,5],12,21],[[6],11,18])},
-  {id:'m3', name:'Кирилл Соколов', exp:'5 лет', h:H([[2,3,4,5],10,19],[[6],10,20],[[0],11,18])},
-  {id:'m4', name:'Максим Лебедев', exp:'3 года', h:H([[1,3,5],10,21],[[6],10,20])},
-  {id:'m5', name:'Илья Фомин', exp:'1 год', h:H([[1,2,3,4,5],10,18])},
-  {id:'m6', name:'Роман Беляев', exp:'15 лет', h:H([[3,4,5],11,21],[[6],10,20],[[0],11,18])}
-];
+function start(CFG){
+var AHEAD = CFG.ahead, SHOP = CFG.shop;
+var SERVICES = CFG.services.map(function(s){ return {n: s.name, d: s.desc, m: s.minutes, p: s.price}; });
+var MASTERS = CFG.masters.map(function(m){ return {id: m.id, name: m.name, exp: m.exp, h: parseHours(m.hours)}; });
 var DUR = {}; SERVICES.forEach(function(s){ DUR[s.n] = s.m; });
+var brandText = 'Барбершоп «' + SHOP.name + '»';
+document.title = brandText + ' — стрижки и борода';
+document.getElementById('brand').textContent = brandText;
+document.getElementById('fbrand').textContent = brandText;
+var addrEl = document.getElementById('addr');
+addrEl.textContent = SHOP.address; addrEl.appendChild(document.createElement('br')); addrEl.appendChild(document.createTextNode(SHOP.note));
+var hrsEl = document.getElementById('hrs');
+SHOP.hours.forEach(function(r){ var tr = document.createElement('tr'); [r[0], r[1]].forEach(function(x){ var td = document.createElement('td'); td.textContent = x; tr.appendChild(td); }); hrsEl.appendChild(tr); });
+var phoneLink = document.getElementById('phone'); phoneLink.textContent = SHOP.phone; phoneLink.href = 'tel:' + SHOP.phone.replace(/[^\d+]/g, '');
 
 function el(t, c, x){ var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
 function money(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0') + '\u00A0₽'; }
@@ -413,6 +413,12 @@ form.addEventListener('submit', async function(e){
   }
 });
 setMaster(MASTERS[0]);
+}
+
+fetch('config.json', {cache: 'no-cache'})
+  .then(function(r){ if (!r.ok) throw new Error('config.json: ' + r.status); return r.json(); })
+  .then(start)
+  .catch(function(e){ console.error(e); document.getElementById('days').textContent = 'Не удалось загрузить настройки сайта. Позвоните нам.'; });
 </script>
 </body>
 </html>
