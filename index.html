@@ -52,6 +52,15 @@ form{display:grid;gap:16px;max-width:460px}
 label{font-weight:600;font-size:15px;display:grid;gap:6px}
 input,select{font:inherit;padding:14px;border:2px solid var(--line);background:var(--paper);color:var(--ink);border-radius:0}
 .ok{display:none;margin-top:16px;padding:16px;border-left:6px solid var(--red);background:var(--navy);color:#fff;max-width:460px}
+.cal{border:2px solid var(--line);padding:12px}
+.cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:600}
+.cal-h button{font:inherit;font-size:22px;color:var(--ink);background:none;border:0;cursor:pointer;padding:2px 12px}
+.cal-h button:disabled{opacity:.25;cursor:default}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal-w{color:var(--muted);font-size:13px;padding-bottom:4px}
+.cal-d{font:inherit;color:var(--ink);background:none;border:0;padding:10px 0;cursor:pointer}
+.cal-d:disabled{color:var(--muted);opacity:.35;cursor:default}
+.cal-t{display:block;margin:8px auto 0;font:inherit;font-size:14px;color:var(--muted);background:none;border:0;cursor:pointer;padding:4px 12px}
 .field{display:grid;gap:8px}
 .lbl{font-weight:600;font-size:15px}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
@@ -131,7 +140,7 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
             <option>Стрижка и борода</option>
           </select>
         </label>
-        <div class="field"><span class="lbl">День</span><div class="days" id="days"></div></div>
+        <div class="field"><span class="lbl">День</span><div class="cal" id="days"></div></div>
         <div class="field"><span class="lbl">Время</span><div id="times" aria-live="polite"></div></div>
         <button class="btn" type="submit">Отправить заявку</button>
       </form>
@@ -177,6 +186,7 @@ phoneEl.addEventListener('blur', function(){ if (fmtPhone(this.value) === '+7 ('
 function p2(n){ return ('0' + n).slice(-2); }
 function hm(m){ return p2(Math.floor(m / 60)) + ':' + (m % 60 ? '30' : '00'); }
 function cells(start, dur){ var o = []; for (var m = start; m < start + dur; m += 30) o.push(hm(m)); return o; }
+function isoOf(d){ return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
 function fullDate(d){ return d.toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'}); }
 
 (function(){
@@ -184,19 +194,53 @@ function fullDate(d){ return d.toLocaleDateString('ru-RU', {weekday:'long', day:
   for (var k = 0; k < 14; k++){
     var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k), h = HOURS[d.getDay()];
     if (k === 0 && now.getHours() * 60 + now.getMinutes() + 60 > h[1] * 60 - 30) continue;
-    DAYS.push({d: d, k: k, iso: d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate())});
+    DAYS.push({d: d, k: k, iso: isoOf(d)});
   }
 })();
 
+var WEEKS = [], byIso = {}, calOpen = false, weekIdx = 0;
+var MONTHS = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+(function(){
+  var base = new Date(); base = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  DAYS.forEach(function(x){ byIso[x.iso] = x; });
+  var last = DAYS[DAYS.length - 1].d;
+  var st = new Date(base.getFullYear(), base.getMonth(), base.getDate() - (base.getDay() + 6) % 7);
+  var en = new Date(last.getFullYear(), last.getMonth(), last.getDate() + (7 - last.getDay()) % 7);
+  for (var d = st; d <= en; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)){
+    var w = [];
+    for (var k = 0; k < 7; k++) w.push(new Date(d.getFullYear(), d.getMonth(), d.getDate() + k));
+    WEEKS.push(w);
+  }
+})();
+function el(t, c, x){ var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
 function renderDays(){
   var box = document.getElementById('days'); box.innerHTML = '';
-  DAYS.forEach(function(x){
-    var b = document.createElement('button'), wd = x.d.toLocaleDateString('ru-RU', {weekday:'short'});
-    b.type = 'button'; b.className = 'day' + (selDate === x ? ' on' : '');
-    b.innerHTML = '<small>' + wd.charAt(0).toUpperCase() + wd.slice(1) + '</small><b>' + x.d.getDate() + '</b>';
-    b.onclick = function(){ pickDay(x); };
-    box.appendChild(b);
-  });
+  var rows = calOpen ? WEEKS : [WEEKS[weekIdx]], ms = [];
+  rows.forEach(function(w){ w.forEach(function(d){ if (ms.indexOf(d.getMonth()) < 0) ms.push(d.getMonth()); }); });
+  var label = ms.map(function(m){ return MONTHS[m]; }).join(' – ');
+  label = label.charAt(0).toUpperCase() + label.slice(1) + ' ' + rows[rows.length - 1][6].getFullYear();
+
+  var h = el('div', 'cal-h'), pv = el('button', '', '‹'), nx = el('button', '', '›');
+  pv.type = nx.type = 'button';
+  pv.setAttribute('aria-label', 'Предыдущая неделя'); nx.setAttribute('aria-label', 'Следующая неделя');
+  pv.disabled = calOpen || weekIdx === 0; nx.disabled = calOpen || weekIdx === WEEKS.length - 1;
+  pv.onclick = function(){ weekIdx--; renderDays(); };
+  nx.onclick = function(){ weekIdx++; renderDays(); };
+  h.appendChild(pv); h.appendChild(el('span', '', label)); h.appendChild(nx);
+
+  var g = el('div', 'cal-g');
+  ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].forEach(function(n){ g.appendChild(el('span', 'cal-w', n)); });
+  rows.forEach(function(w){ w.forEach(function(d){
+    var x = byIso[isoOf(d)], b = el('button', 'cal-d' + (x && selDate === x ? ' on' : ''), d.getDate());
+    b.type = 'button'; b.disabled = !x; b.setAttribute('aria-label', fullDate(d));
+    if (x) b.onclick = function(){ pickDay(x); };
+    g.appendChild(b);
+  }); });
+
+  var t = el('button', 'cal-t', calOpen ? 'Свернуть ▲' : 'Развернуть ▼');
+  t.type = 'button';
+  t.onclick = function(){ calOpen = !calOpen; renderDays(); };
+  box.appendChild(h); box.appendChild(g); box.appendChild(t);
 }
 function loadBusy(x){
   if (Array.isArray(busy[x.iso])) return;
@@ -207,7 +251,9 @@ function loadBusy(x){
     .catch(function(){ busy[x.iso] = 'err'; })
     .then(renderTimes);
 }
-function pickDay(x){ selDate = x; selTime = null; renderDays(); renderTimes(); loadBusy(x); }
+function pickDay(x){ selDate = x; selTime = null;
+  WEEKS.forEach(function(w, i){ if (w.some(function(d){ return isoOf(d) === x.iso; })) weekIdx = i; });
+  renderDays(); renderTimes(); loadBusy(x); }
 
 function renderTimes(){
   var box = document.getElementById('times'), b = busy[selDate.iso];
@@ -217,7 +263,7 @@ function renderTimes(){
   box.innerHTML = '';
   var pk = document.createElement('p'); pk.className = 'picked'; pk.textContent = fullDate(selDate.d); box.appendChild(pk);
   var any = false;
-  [['Утро, до 12:00', 0, 720], ['День, 12:00–17:00', 720, 1020], ['Вечер, после 17:00', 1020, 1440]].forEach(function(g){
+  [['Утро', 0, 720], ['День', 720, 1020], ['Вечер', 1020, 1440]].forEach(function(g){
     var grid = document.createElement('div'); grid.className = 'slots';
     for (var m = h[0] * 60; m < h[1] * 60; m += 30){
       if (m < g[1] || m >= g[2]) continue;
