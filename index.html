@@ -61,6 +61,8 @@ input,select{font:inherit;padding:14px;border:2px solid var(--line);background:v
 .cal-d{font:inherit;color:var(--ink);background:none;border:0;padding:10px 0;cursor:pointer}
 .cal-d:disabled{color:var(--muted);opacity:.35;cursor:default}
 .cal-t{display:block;margin:8px auto 0;font:inherit;font-size:14px;color:var(--muted);background:none;border:0;cursor:pointer;padding:4px 12px}
+.consent{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:14px;color:var(--muted)}
+.consent input{flex:none;width:20px;height:20px;padding:0;margin-top:2px;accent-color:var(--red)}
 .field{display:grid;gap:8px}
 .lbl{font-weight:600;font-size:15px}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
@@ -142,6 +144,7 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
         </label>
         <div class="field"><span class="lbl">День</span><div class="cal" id="days"></div></div>
         <div class="field"><span class="lbl">Время</span><div id="times" aria-live="polite"></div></div>
+        <label class="consent"><input type="checkbox" name="consent" required><span>Я даю <a href="privacy.html" target="_blank" rel="noopener">согласие на обработку персональных данных</a> (имя и телефон) для записи на услугу</span></label>
         <button class="btn" type="submit">Отправить заявку</button>
       </form>
       <p class="ok" id="ok" role="status">Заявка принята. Мы перезвоним в течение 15 минут и подтвердим время.</p>
@@ -151,7 +154,7 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
 </main>
 
 <footer>
-  <div class="wrap">© Барбершоп «Стрижки от kennai». Учебный демо-проект.</div>
+  <div class="wrap">© Барбершоп «Стрижки от kennai». Учебный демо-проект. <a href="privacy.html">Политика конфиденциальности</a></div>
 </footer>
 
 <script>
@@ -296,7 +299,7 @@ form.addEventListener('submit', async function(e){
   var btn = form.querySelector('button[type=submit]');
   btn.disabled = true; btn.textContent = 'Отправляем...';
   var data = {name: nameEl.value, phone: phoneEl.value, service: svcEl.value,
-    date: selDate.iso, time: selTime, label: fullDate(selDate.d)};
+    date: selDate.iso, time: selTime, label: fullDate(selDate.d), consent: form.elements['consent'].checked};
   try {
     var r = await fetch(WORKER_URL, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
     if (r.status === 409){
