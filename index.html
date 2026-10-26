@@ -63,6 +63,20 @@ input,select{font:inherit;padding:14px;border:2px solid var(--line);background:v
 .cal-t{display:block;margin:8px auto 0;font:inherit;font-size:14px;color:var(--muted);background:none;border:0;cursor:pointer;padding:4px 12px}
 .consent{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:14px;color:var(--muted)}
 .consent input{flex:none;width:20px;height:20px;padding:0;margin-top:2px;accent-color:var(--red)}
+.mwrap{position:relative}
+.masters{position:relative;display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:36px calc(50% - 135px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.masters::-webkit-scrollbar{display:none}
+.marr{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:44px;height:44px;border-radius:50%;border:2px solid var(--line);background:var(--paper);color:var(--ink);font-size:24px;line-height:1;cursor:pointer}
+.marr.l{left:0}.marr.r{right:0}
+.mc{flex:0 0 270px;scroll-snap-align:center;border:2px solid var(--line);border-radius:22px;overflow:hidden;background:var(--paper);display:flex;flex-direction:column;transform:scale(1);transition:transform .25s,box-shadow .25s}
+.mc.center{transform:scale(1.1);box-shadow:0 14px 32px rgba(0,0,0,.28)}
+.ph{position:relative;aspect-ratio:4/5;background:#1d2b4d;display:grid;place-items:center;overflow:hidden}
+.ph b{font-family:Oswald,sans-serif;font-size:56px;color:#f7f5f0;opacity:.55}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.mi{padding:14px 16px 16px;display:grid;gap:4px}
+.mi h3{font-size:22px}
+.mi small{color:var(--muted);font-size:15px}
+.mi .btn{margin-top:10px;text-align:center;border-radius:12px}
 .field{display:grid;gap:8px}
 .lbl{font-weight:600;font-size:15px}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
@@ -93,16 +107,21 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
 </header>
 
 <main>
+  <section id="mastera">
+    <div class="wrap">
+      <h2>Наши мастера</h2>
+      <div class="mwrap">
+        <button type="button" class="marr l" id="mprev" aria-label="Предыдущий мастер">‹</button>
+        <div class="masters" id="masters"></div>
+        <button type="button" class="marr r" id="mnext" aria-label="Следующий мастер">›</button>
+      </div>
+    </div>
+  </section>
+
   <section id="uslugi">
     <div class="wrap">
       <h2>Услуги и цены</h2>
-      <ul class="prices">
-        <li><span class="name">Мужская стрижка<span class="desc">Мытьё головы и укладка включены, 60 минут</span></span><span class="dots"></span><span class="cost">1 800 ₽</span></li>
-        <li><span class="name">Стрижка машинкой<span class="desc">Одна насадка, контур, 30 минут</span></span><span class="dots"></span><span class="cost">1 000 ₽</span></li>
-        <li><span class="name">Моделирование бороды<span class="desc">Форма, контур, масло для ухода, 40 минут</span></span><span class="dots"></span><span class="cost">1 200 ₽</span></li>
-        <li><span class="name">Бритьё опасной бритвой<span class="desc">Горячее полотенце, пена, лосьон, 45 минут</span></span><span class="dots"></span><span class="cost">1 500 ₽</span></li>
-        <li><span class="name">Стрижка и борода<span class="desc">Полный комплект, 90 минут</span></span><span class="dots"></span><span class="cost">2 700 ₽</span></li>
-      </ul>
+      <ul class="prices" id="prices"></ul>
     </div>
   </section>
 
@@ -133,15 +152,8 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
       <form id="f">
         <label>Имя<input name="name" required autocomplete="given-name" maxlength="40" placeholder="Как к вам обращаться"></label>
         <label>Телефон<input name="phone" type="tel" inputmode="tel" required autocomplete="tel" maxlength="18" placeholder="+7 (___) ___-__-__" pattern="\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}" title="Введите номер полностью: +7 (999) 123-45-67"></label>
-        <label>Услуга
-          <select name="service">
-            <option>Мужская стрижка</option>
-            <option>Стрижка машинкой</option>
-            <option>Моделирование бороды</option>
-            <option>Бритьё опасной бритвой</option>
-            <option>Стрижка и борода</option>
-          </select>
-        </label>
+        <label>Услуга<select name="service" id="svc"></select></label>
+        <label>Мастер<select name="master" id="master"></select></label>
         <div class="field"><span class="lbl">День</span><div class="cal" id="days"></div></div>
         <div class="field"><span class="lbl">Время</span><div id="times" aria-live="polite"></div></div>
         <label class="consent"><input type="checkbox" name="consent" required><span>Я даю <a href="soglasie.html" target="_blank" rel="noopener">согласие на обработку персональных данных</a> (имя и телефон) для записи на услугу</span></label>
@@ -159,11 +171,107 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
 
 <script>
 var WORKER_URL = 'https://barber-zayavki.kenny-ki.workers.dev';
+var AHEAD = 30; // на сколько дней вперёд можно записаться (то же число в worker.js)
+
+// Услуги: n - название, d - описание, m - минуты, p - цена. Цены меняются только здесь.
+var SERVICES = [
+  {n:'Мужская стрижка', d:'Мытьё головы и укладка включены', m:60, p:1800},
+  {n:'Стрижка машинкой', d:'Одна насадка, контур', m:30, p:1000},
+  {n:'Моделирование бороды', d:'Форма, контур, масло для ухода', m:40, p:1200},
+  {n:'Бритьё опасной бритвой', d:'Горячее полотенце, пена, лосьон', m:45, p:1500},
+  {n:'Стрижка и борода', d:'Полный комплект', m:90, p:2700}
+];
+// Мастера: фото кладутся в корень репозитория как m1.jpg ... m6.jpg. Расписание: дни недели (0 = воскресенье), часы.
+function H(){ var o = {}; for (var i = 0; i < arguments.length; i++){ (function(r){ r[0].forEach(function(d){ o[d] = [r[1], r[2]]; }); })(arguments[i]); } return o; }
+var MASTERS = [
+  {id:'m1', name:'Артём Волков', exp:'12 лет', h:H([[1,2,3,4,5],10,21],[[6],10,20])},
+  {id:'m2', name:'Дмитрий Орлов', exp:'8 лет', h:H([[1,2,3,4,5],12,21],[[6],11,18])},
+  {id:'m3', name:'Кирилл Соколов', exp:'5 лет', h:H([[2,3,4,5],10,19],[[6],10,20],[[0],11,18])},
+  {id:'m4', name:'Максим Лебедев', exp:'3 года', h:H([[1,3,5],10,21],[[6],10,20])},
+  {id:'m5', name:'Илья Фомин', exp:'1 год', h:H([[1,2,3,4,5],10,18])},
+  {id:'m6', name:'Роман Беляев', exp:'15 лет', h:H([[3,4,5],11,21],[[6],10,20],[[0],11,18])}
+];
+var DUR = {}; SERVICES.forEach(function(s){ DUR[s.n] = s.m; });
+
+function el(t, c, x){ var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
+function money(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0') + '\u00A0₽'; }
+function p2(n){ return ('0' + n).slice(-2); }
+function hm(m){ return p2(Math.floor(m / 60)) + ':' + (m % 60 ? '30' : '00'); }
+function cells(start, dur){ var o = []; for (var m = start; m < start + dur; m += 30) o.push(hm(m)); return o; }
+function isoOf(d){ return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+function fullDate(d){ return d.toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'}); }
+
 var form = document.getElementById('f');
-var nameEl = form.elements['name'], phoneEl = form.elements['phone'], svcEl = form.elements['service'];
-var DUR = {'Мужская стрижка':60,'Стрижка машинкой':30,'Моделирование бороды':40,'Бритьё опасной бритвой':45,'Стрижка и борода':90};
-var HOURS = {0:[11,18],1:[10,21],2:[10,21],3:[10,21],4:[10,21],5:[10,21],6:[10,20]};
-var busy = {}, selDate = null, selTime = null, DAYS = [];
+var nameEl = form.elements['name'], phoneEl = form.elements['phone'];
+var svcEl = document.getElementById('svc'), masterEl = document.getElementById('master');
+var busy = {}, selDate = null, selTime = null, DAYS = [], byIso = {}, WEEKS = [], calOpen = false, weekIdx = 0, curMaster = MASTERS[0];
+
+// Цены и список услуг из одного источника
+var pl = document.getElementById('prices');
+SERVICES.forEach(function(s){
+  var li = el('li'), nm = el('span', 'name', s.n);
+  nm.appendChild(el('span', 'desc', s.d + ', ' + s.m + ' мин'));
+  li.appendChild(nm); li.appendChild(el('span', 'dots')); li.appendChild(el('span', 'cost', money(s.p)));
+  pl.appendChild(li);
+  var o = el('option', '', s.n + ' — ' + money(s.p) + ', ' + s.m + ' мин'); o.value = s.n; svcEl.appendChild(o);
+});
+svcEl.value = SERVICES[0].n;
+
+// Карточки мастеров (5 копий для бесконечной карусели) и выбор мастера в форме
+var ml = document.getElementById('masters'), N = MASTERS.length;
+MASTERS.forEach(function(m){
+  var o = el('option', '', m.name + ', стаж ' + m.exp); o.value = m.id; masterEl.appendChild(o);
+});
+function makeCard(m, hidden){
+  var c = el('div', 'mc'), ph = el('div', 'ph');
+  ph.appendChild(el('b', '', m.name.split(' ').map(function(w){ return w.charAt(0); }).join('')));
+  var img = document.createElement('img'); img.src = m.id + '.jpg'; img.alt = 'Мастер ' + m.name; img.loading = 'lazy';
+  img.onerror = function(){ this.remove(); }; ph.appendChild(img);
+  var mi = el('div', 'mi'); mi.appendChild(el('h3', '', m.name)); mi.appendChild(el('small', '', 'Стаж: ' + m.exp));
+  var b = el('button', 'btn', 'Записаться'); b.type = 'button';
+  b.onclick = function(){ masterEl.value = m.id; setMaster(m); document.getElementById('zapis').scrollIntoView({behavior:'smooth'}); };
+  if (hidden){ c.setAttribute('aria-hidden', 'true'); b.tabIndex = -1; }
+  mi.appendChild(b); c.appendChild(ph); c.appendChild(mi);
+  return c;
+}
+for (var cp = 0; cp < 5; cp++) MASTERS.forEach(function(m){ ml.appendChild(makeCard(m, cp !== 2)); });
+masterEl.value = MASTERS[0].id;
+
+// Карусель: ближайшая к центру карточка увеличивается, лента бесконечная
+function centerIdx(){
+  var r = ml.getBoundingClientRect(), cx = r.left + r.width / 2, idx = 0, bd = 1e9;
+  [].forEach.call(ml.children, function(c, i){
+    var b = c.getBoundingClientRect(), d = Math.abs(b.left + b.width / 2 - cx);
+    if (d < bd){ bd = d; idx = i; }
+  });
+  return idx;
+}
+function markCenter(){
+  var idx = centerIdx();
+  [].forEach.call(ml.children, function(c, i){ c.classList.toggle('center', i === idx); });
+}
+function recenter(){ // когда лента уехала из средней копии, незаметно возвращаем её
+  var set = Math.floor(centerIdx() / N);
+  if (set !== 2){
+    var w = ml.children[N].offsetLeft - ml.children[0].offsetLeft;
+    ml.style.scrollSnapType = 'none';
+    ml.scrollLeft += (2 - set) * w;
+    requestAnimationFrame(function(){ ml.style.scrollSnapType = ''; markCenter(); });
+  }
+}
+var mraf, mt;
+ml.addEventListener('scroll', function(){
+  cancelAnimationFrame(mraf); mraf = requestAnimationFrame(markCenter);
+  clearTimeout(mt); mt = setTimeout(recenter, 120);
+});
+window.addEventListener('resize', markCenter);
+function mstep(dir){ ml.scrollBy({left: dir * (ml.children[0].offsetWidth + 18), behavior: 'smooth'}); }
+document.getElementById('mprev').onclick = function(){ mstep(-1); };
+document.getElementById('mnext').onclick = function(){ mstep(1); };
+// Старт: Волков слева, Орлов по центру
+var startCard = ml.children[2 * N + 1];
+ml.scrollLeft = startCard.offsetLeft + startCard.offsetWidth / 2 - ml.clientWidth / 2;
+markCenter();
 
 nameEl.addEventListener('input', function(){
   var pos = this.selectionStart;
@@ -186,43 +294,32 @@ phoneEl.addEventListener('focus', function(){ if (!this.value) this.value = '+7 
 phoneEl.addEventListener('input', function(){ this.value = fmtPhone(this.value); });
 phoneEl.addEventListener('blur', function(){ if (fmtPhone(this.value) === '+7 (') this.value = ''; });
 
-function p2(n){ return ('0' + n).slice(-2); }
-function hm(m){ return p2(Math.floor(m / 60)) + ':' + (m % 60 ? '30' : '00'); }
-function cells(start, dur){ var o = []; for (var m = start; m < start + dur; m += 30) o.push(hm(m)); return o; }
-function isoOf(d){ return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
-function fullDate(d){ return d.toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'}); }
-
-(function(){
-  var now = new Date();
-  for (var k = 0; k < 14; k++){
-    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k), h = HOURS[d.getDay()];
-    if (k === 0 && now.getHours() * 60 + now.getMinutes() + 60 > h[1] * 60 - 30) continue;
-    DAYS.push({d: d, k: k, iso: isoOf(d)});
-  }
-})();
-
-var WEEKS = [], byIso = {}, calOpen = false, weekIdx = 0;
+// Календарь
+var base = new Date(); base = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+function dayAt(k){ return new Date(base.getFullYear(), base.getMonth(), base.getDate() + k); }
 var MONTHS = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
 (function(){
-  var base = new Date(); base = new Date(base.getFullYear(), base.getMonth(), base.getDate());
-  DAYS.forEach(function(x){ byIso[x.iso] = x; });
-  var last = DAYS[DAYS.length - 1].d;
-  var st = new Date(base.getFullYear(), base.getMonth(), base.getDate() - (base.getDay() + 6) % 7);
-  var en = new Date(last.getFullYear(), last.getMonth(), last.getDate() + (7 - last.getDay()) % 7);
-  for (var d = st; d <= en; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)){
-    var w = [];
-    for (var k = 0; k < 7; k++) w.push(new Date(d.getFullYear(), d.getMonth(), d.getDate() + k));
+  var last = dayAt(AHEAD - 1), en = new Date(last.getFullYear(), last.getMonth(), last.getDate() + (7 - last.getDay()) % 7);
+  for (var d = dayAt(-((base.getDay() + 6) % 7)); d <= en; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)){
+    var w = []; for (var k = 0; k < 7; k++) w.push(new Date(d.getFullYear(), d.getMonth(), d.getDate() + k));
     WEEKS.push(w);
   }
 })();
-function el(t, c, x){ var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }
+function buildDays(){
+  DAYS = []; byIso = {}; var now = new Date();
+  for (var k = 0; k < AHEAD; k++){
+    var d = dayAt(k), h = curMaster.h[d.getDay()];
+    if (!h) continue;
+    if (k === 0 && now.getHours() * 60 + now.getMinutes() + 60 > h[1] * 60 - 30) continue;
+    var x = {d: d, k: k, iso: isoOf(d)}; DAYS.push(x); byIso[x.iso] = x;
+  }
+}
 function renderDays(){
   var box = document.getElementById('days'); box.innerHTML = '';
   var rows = calOpen ? WEEKS : [WEEKS[weekIdx]], ms = [];
   rows.forEach(function(w){ w.forEach(function(d){ if (ms.indexOf(d.getMonth()) < 0) ms.push(d.getMonth()); }); });
   var label = ms.map(function(m){ return MONTHS[m]; }).join(' – ');
   label = label.charAt(0).toUpperCase() + label.slice(1) + ' ' + rows[rows.length - 1][6].getFullYear();
-
   var h = el('div', 'cal-h'), pv = el('button', '', '‹'), nx = el('button', '', '›');
   pv.type = nx.type = 'button';
   pv.setAttribute('aria-label', 'Предыдущая неделя'); nx.setAttribute('aria-label', 'Следующая неделя');
@@ -230,7 +327,6 @@ function renderDays(){
   pv.onclick = function(){ weekIdx--; renderDays(); };
   nx.onclick = function(){ weekIdx++; renderDays(); };
   h.appendChild(pv); h.appendChild(el('span', '', label)); h.appendChild(nx);
-
   var g = el('div', 'cal-g');
   ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].forEach(function(n){ g.appendChild(el('span', 'cal-w', n)); });
   rows.forEach(function(w){ w.forEach(function(d){
@@ -239,71 +335,73 @@ function renderDays(){
     if (x) b.onclick = function(){ pickDay(x); };
     g.appendChild(b);
   }); });
-
   var t = el('button', 'cal-t', calOpen ? 'Свернуть ▲' : 'Развернуть ▼');
-  t.type = 'button';
-  t.onclick = function(){ calOpen = !calOpen; renderDays(); };
+  t.type = 'button'; t.onclick = function(){ calOpen = !calOpen; renderDays(); };
   box.appendChild(h); box.appendChild(g); box.appendChild(t);
 }
+function busyKey(x){ return curMaster.id + '|' + x.iso; }
 function loadBusy(x){
-  if (Array.isArray(busy[x.iso])) return;
-  delete busy[x.iso];
-  fetch(WORKER_URL + '?date=' + x.iso, {cache: 'no-store'})
+  var key = busyKey(x), mid = curMaster.id;
+  if (Array.isArray(busy[key])) return;
+  delete busy[key];
+  fetch(WORKER_URL + '?master=' + mid + '&date=' + x.iso, {cache: 'no-store'})
     .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-    .then(function(a){ busy[x.iso] = a; })
-    .catch(function(){ busy[x.iso] = 'err'; })
-    .then(renderTimes);
+    .then(function(a){ busy[key] = a; })
+    .catch(function(){ busy[key] = 'err'; })
+    .then(function(){ if (selDate === x && curMaster.id === mid) renderTimes(); });
 }
-function pickDay(x){ selDate = x; selTime = null;
+function pickDay(x){
+  selDate = x; selTime = null;
   WEEKS.forEach(function(w, i){ if (w.some(function(d){ return isoOf(d) === x.iso; })) weekIdx = i; });
-  renderDays(); renderTimes(); loadBusy(x); }
+  renderDays(); renderTimes(); loadBusy(x);
+}
+function setMaster(m){
+  curMaster = m; buildDays();
+  pickDay((selDate && byIso[selDate.iso]) || DAYS[0]);
+}
 
 function renderTimes(){
-  var box = document.getElementById('times'), b = busy[selDate.iso];
+  var box = document.getElementById('times'), b = busy[busyKey(selDate)];
   if (!b){ box.textContent = 'Загружаем свободное время…'; return; }
   if (b === 'err'){ box.textContent = 'Не удалось загрузить расписание. Позвоните нам.'; return; }
-  var dur = DUR[svcEl.value], h = HOURS[selDate.d.getDay()], now = new Date();
+  var dur = DUR[svcEl.value], h = curMaster.h[selDate.d.getDay()], now = new Date();
   box.innerHTML = '';
-  var pk = document.createElement('p'); pk.className = 'picked'; pk.textContent = fullDate(selDate.d); box.appendChild(pk);
+  var pk = el('p', 'picked', curMaster.name + ', ' + fullDate(selDate.d)); box.appendChild(pk);
   var any = false;
   [['Утро', 0, 720], ['День', 720, 1020], ['Вечер', 1020, 1440]].forEach(function(g){
-    var grid = document.createElement('div'); grid.className = 'slots';
+    var grid = el('div', 'slots');
     for (var m = h[0] * 60; m < h[1] * 60; m += 30){
       if (m < g[1] || m >= g[2]) continue;
       var t = hm(m), past = selDate.k === 0 && m < now.getHours() * 60 + now.getMinutes() + 60;
       var free = !past && m + dur <= h[1] * 60 && cells(m, dur).every(function(c){ return b.indexOf(c) < 0; });
       if (!free) continue;
       any = true;
-      var btn = document.createElement('button');
-      btn.type = 'button'; btn.textContent = t;
-      btn.className = 'slot' + (selTime === t ? ' on' : '');
+      var btn = el('button', 'slot' + (selTime === t ? ' on' : ''), t); btn.type = 'button';
       btn.onclick = (function(tt){ return function(){ selTime = tt; renderTimes(); }; })(t);
       grid.appendChild(btn);
     }
-    if (grid.children.length){
-      var l = document.createElement('p'); l.className = 'grp'; l.textContent = g[0];
-      box.appendChild(l); box.appendChild(grid);
-    }
+    if (grid.children.length){ box.appendChild(el('p', 'grp', g[0])); box.appendChild(grid); }
   });
-  if (!any){ var n = document.createElement('p'); n.textContent = 'На этот день свободного времени нет. Выберите другой день.'; box.appendChild(n); }
+  if (!any) box.appendChild(el('p', '', 'На этот день у мастера нет свободного времени. Выберите другой день или другого мастера.'));
 }
 svcEl.addEventListener('change', function(){ selTime = null; renderTimes(); });
+masterEl.addEventListener('change', function(){
+  setMaster(MASTERS.filter(function(m){ return m.id === masterEl.value; })[0]);
+});
 
-function showErr(msg){
-  var e = document.getElementById('err'); e.textContent = msg; e.style.display = 'block';
-}
+function showErr(msg){ var e = document.getElementById('err'); e.textContent = msg; e.style.display = 'block'; }
 form.addEventListener('submit', async function(e){
   e.preventDefault();
   document.getElementById('err').style.display = 'none';
   if (!selTime){ showErr('Выберите день и время.'); return; }
   var btn = form.querySelector('button[type=submit]');
   btn.disabled = true; btn.textContent = 'Отправляем...';
-  var data = {name: nameEl.value, phone: phoneEl.value, service: svcEl.value,
+  var data = {name: nameEl.value, phone: phoneEl.value, service: svcEl.value, master: curMaster.id,
     date: selDate.iso, time: selTime, label: fullDate(selDate.d), consent: form.elements['consent'].checked};
   try {
     var r = await fetch(WORKER_URL, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
     if (r.status === 409){
-      delete busy[selDate.iso]; selTime = null; renderTimes(); loadBusy(selDate);
+      delete busy[busyKey(selDate)]; selTime = null; renderTimes(); loadBusy(selDate);
       throw new Error('Это время только что заняли. Выберите другое.');
     }
     if (!r.ok) throw new Error('Не удалось отправить заявку. Позвоните нам, мы запишем вас сразу.');
@@ -314,7 +412,7 @@ form.addEventListener('submit', async function(e){
     btn.disabled = false; btn.textContent = 'Отправить заявку';
   }
 });
-renderDays(); pickDay(DAYS[0]);
+setMaster(MASTERS[0]);
 </script>
 </body>
 </html>
