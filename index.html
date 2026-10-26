@@ -52,6 +52,18 @@ form{display:grid;gap:16px;max-width:460px}
 label{font-weight:600;font-size:15px;display:grid;gap:6px}
 input,select{font:inherit;padding:14px;border:2px solid var(--line);background:var(--paper);color:var(--ink);border-radius:0}
 .ok{display:none;margin-top:16px;padding:16px;border-left:6px solid var(--red);background:var(--navy);color:#fff;max-width:460px}
+.field{display:grid;gap:8px}
+.lbl{font-weight:600;font-size:15px}
+.days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.day,.slot{font:inherit;color:var(--ink);background:var(--paper);border:2px solid var(--line);cursor:pointer;padding:10px 0}
+.day{flex:0 0 62px;display:grid;gap:2px;justify-items:center}
+.day small{color:var(--muted)}
+.day b{font-family:Oswald,sans-serif;font-size:22px}
+.on,.on small{background:var(--red);border-color:var(--red);color:#fff}
+.picked{font-weight:600;margin:4px 0}
+.grp{color:var(--muted);font-size:14px;margin:12px 0 6px}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.slot:disabled{opacity:.35;text-decoration:line-through;cursor:not-allowed}
 footer{padding:32px 0;color:var(--muted);font-size:14px}
 @media (max-width:640px){.brand{margin-bottom:32px}.hero{background-position:60% center}}
 </style>
@@ -108,8 +120,8 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
     <div class="wrap">
       <h2>Запись</h2>
       <form id="f">
-        <label>Имя<input name="name" required autocomplete="given-name"></label>
-        <label>Телефон<input name="phone" type="tel" required autocomplete="tel" placeholder="+7"></label>
+        <label>Имя<input name="name" required autocomplete="given-name" maxlength="40" placeholder="Как к вам обращаться"></label>
+        <label>Телефон<input name="phone" type="tel" inputmode="tel" required autocomplete="tel" maxlength="18" placeholder="+7 (___) ___-__-__" pattern="\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}" title="Введите номер полностью: +7 (999) 123-45-67"></label>
         <label>Услуга
           <select name="service">
             <option>Мужская стрижка</option>
@@ -119,7 +131,8 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
             <option>Стрижка и борода</option>
           </select>
         </label>
-        <label>Удобное время<input name="time" type="datetime-local" required></label>
+        <div class="field"><span class="lbl">День</span><div class="days" id="days"></div></div>
+        <div class="field"><span class="lbl">Время</span><div id="times" aria-live="polite"></div></div>
         <button class="btn" type="submit">Отправить заявку</button>
       </form>
       <p class="ok" id="ok" role="status">Заявка принята. Мы перезвоним в течение 15 минут и подтвердим время.</p>
@@ -134,25 +147,121 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
 
 <script>
 var WORKER_URL = 'https://barber-zayavki.kenny-ki.workers.dev';
-document.getElementById('f').addEventListener('submit', async function(e){
+var form = document.getElementById('f');
+var nameEl = form.elements['name'], phoneEl = form.elements['phone'], svcEl = form.elements['service'];
+var DUR = {'Мужская стрижка':60,'Стрижка машинкой':30,'Моделирование бороды':40,'Бритьё опасной бритвой':45,'Стрижка и борода':90};
+var HOURS = {0:[11,18],1:[10,21],2:[10,21],3:[10,21],4:[10,21],5:[10,21],6:[10,20]};
+var busy = {}, selDate = null, selTime = null, DAYS = [];
+
+nameEl.addEventListener('input', function(){
+  var pos = this.selectionStart;
+  this.value = this.value.replace(/[^A-Za-zА-Яа-яЁё\s-]/g, '')
+    .replace(/(^|[\s-])([a-zа-яё])/g, function(m, a, b){ return a + b.toUpperCase(); });
+  this.setSelectionRange(pos, pos);
+});
+function fmtPhone(v){
+  var d = v.replace(/\D/g, '');
+  if (d[0] === '7' || d[0] === '8') d = d.slice(1);
+  if (d.length > 10 && (d[0] === '7' || d[0] === '8')) d = d.slice(1);
+  d = d.slice(0, 10);
+  var o = '+7 (' + d.slice(0, 3);
+  if (d.length > 3) o += ') ' + d.slice(3, 6);
+  if (d.length > 6) o += '-' + d.slice(6, 8);
+  if (d.length > 8) o += '-' + d.slice(8, 10);
+  return o;
+}
+phoneEl.addEventListener('focus', function(){ if (!this.value) this.value = '+7 ('; });
+phoneEl.addEventListener('input', function(){ this.value = fmtPhone(this.value); });
+phoneEl.addEventListener('blur', function(){ if (fmtPhone(this.value) === '+7 (') this.value = ''; });
+
+function p2(n){ return ('0' + n).slice(-2); }
+function hm(m){ return p2(Math.floor(m / 60)) + ':' + (m % 60 ? '30' : '00'); }
+function cells(start, dur){ var o = []; for (var m = start; m < start + dur; m += 30) o.push(hm(m)); return o; }
+function fullDate(d){ return d.toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'}); }
+
+(function(){
+  var now = new Date();
+  for (var k = 0; k < 14; k++){
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k), h = HOURS[d.getDay()];
+    if (k === 0 && now.getHours() * 60 + now.getMinutes() + 60 > h[1] * 60 - 30) continue;
+    DAYS.push({d: d, k: k, iso: d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate())});
+  }
+})();
+
+function renderDays(){
+  var box = document.getElementById('days'); box.innerHTML = '';
+  DAYS.forEach(function(x){
+    var b = document.createElement('button'), wd = x.d.toLocaleDateString('ru-RU', {weekday:'short'});
+    b.type = 'button'; b.className = 'day' + (selDate === x ? ' on' : '');
+    b.innerHTML = '<small>' + wd.charAt(0).toUpperCase() + wd.slice(1) + '</small><b>' + x.d.getDate() + '</b>';
+    b.onclick = function(){ pickDay(x); };
+    box.appendChild(b);
+  });
+}
+function loadBusy(x){
+  if (Array.isArray(busy[x.iso])) return;
+  delete busy[x.iso];
+  fetch(WORKER_URL + '?date=' + x.iso, {cache: 'no-store'})
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+    .then(function(a){ busy[x.iso] = a; })
+    .catch(function(){ busy[x.iso] = 'err'; })
+    .then(renderTimes);
+}
+function pickDay(x){ selDate = x; selTime = null; renderDays(); renderTimes(); loadBusy(x); }
+
+function renderTimes(){
+  var box = document.getElementById('times'), b = busy[selDate.iso];
+  if (!b){ box.textContent = 'Загружаем свободное время…'; return; }
+  if (b === 'err'){ box.textContent = 'Не удалось загрузить расписание. Позвоните нам.'; return; }
+  var dur = DUR[svcEl.value], h = HOURS[selDate.d.getDay()], now = new Date();
+  box.innerHTML = '';
+  var pk = document.createElement('p'); pk.className = 'picked'; pk.textContent = fullDate(selDate.d); box.appendChild(pk);
+  [['Утро', 0, 720], ['День', 720, 1020], ['Вечер', 1020, 1440]].forEach(function(g){
+    var grid = document.createElement('div'); grid.className = 'slots';
+    for (var m = h[0] * 60; m < h[1] * 60; m += 30){
+      if (m < g[1] || m >= g[2]) continue;
+      var t = hm(m), past = selDate.k === 0 && m < now.getHours() * 60 + now.getMinutes() + 60;
+      var free = !past && m + dur <= h[1] * 60 && cells(m, dur).every(function(c){ return b.indexOf(c) < 0; });
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.textContent = t; btn.disabled = !free;
+      btn.className = 'slot' + (selTime === t ? ' on' : '');
+      btn.onclick = (function(tt){ return function(){ selTime = tt; renderTimes(); }; })(t);
+      grid.appendChild(btn);
+    }
+    if (grid.children.length){
+      var l = document.createElement('p'); l.className = 'grp'; l.textContent = g[0];
+      box.appendChild(l); box.appendChild(grid);
+    }
+  });
+}
+svcEl.addEventListener('change', function(){ selTime = null; renderTimes(); });
+
+function showErr(msg){
+  var e = document.getElementById('err'); e.textContent = msg; e.style.display = 'block';
+}
+form.addEventListener('submit', async function(e){
   e.preventDefault();
-  var form = this, btn = form.querySelector('button');
   document.getElementById('err').style.display = 'none';
+  if (!selTime){ showErr('Выберите день и время.'); return; }
+  var btn = form.querySelector('button[type=submit]');
   btn.disabled = true; btn.textContent = 'Отправляем...';
+  var data = {name: nameEl.value, phone: phoneEl.value, service: svcEl.value,
+    date: selDate.iso, time: selTime, label: fullDate(selDate.d)};
   try {
-    var r = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(Object.fromEntries(new FormData(form)))
-    });
-    if (!r.ok) throw new Error('send failed');
+    var r = await fetch(WORKER_URL, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+    if (r.status === 409){
+      delete busy[selDate.iso]; selTime = null; renderTimes(); loadBusy(selDate);
+      throw new Error('Это время только что заняли. Выберите другое.');
+    }
+    if (!r.ok) throw new Error('Не удалось отправить заявку. Позвоните нам, мы запишем вас сразу.');
     form.style.display = 'none';
     document.getElementById('ok').style.display = 'block';
   } catch (err) {
+    showErr(err.message || 'Не удалось отправить заявку. Позвоните нам.');
     btn.disabled = false; btn.textContent = 'Отправить заявку';
-    document.getElementById('err').style.display = 'block';
   }
 });
+renderDays(); pickDay(DAYS[0]);
 </script>
 </body>
 </html>
