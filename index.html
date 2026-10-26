@@ -24,19 +24,13 @@ a{color:inherit}
 .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
 
 /* hero */
-.hero{background:var(--navy);color:#f7f5f0;overflow:hidden}
-.hero .wrap{display:grid;grid-template-columns:1fr 150px;gap:40px;align-items:center;padding-top:56px;padding-bottom:56px}
+.hero{min-height:92vh;display:flex;align-items:center;color:#f7f5f0;background:linear-gradient(90deg,rgba(10,16,32,.92) 0%,rgba(10,16,32,.7) 50%,rgba(10,16,32,.35) 100%),#14213d url(hero.jpg) center/cover no-repeat}
+.hero .wrap{width:100%;padding-top:56px;padding-bottom:56px}
 .brand{font-family:Oswald,sans-serif;font-weight:700;font-size:20px;margin-bottom:56px}
 .hero h1{font-size:clamp(44px,9vw,92px);font-weight:700}
 .hero p{max-width:34em;margin:24px 0 32px;color:#cfd3de}
 .btn{display:inline-block;background:var(--red);color:#fff;text-decoration:none;font-weight:600;padding:16px 28px;border:0;font:inherit;font-weight:600;cursor:pointer}
 .btn:hover{background:#a82a24}
-.pole{height:360px;border-radius:75px/24px;border:6px solid #f7f5f0;
-  background:repeating-linear-gradient(-35deg,var(--red) 0 28px,#f7f5f0 28px 56px,#2b4a8a 56px 84px,#f7f5f0 84px 112px);
-  background-size:100% 112px;animation:spin 3s linear infinite}
-@keyframes spin{to{background-position:0 112px}}
-@media (prefers-reduced-motion:reduce){.pole{animation:none}}
-
 section{padding:72px 0;border-bottom:1px solid var(--line)}
 h2{font-size:clamp(32px,5vw,48px);margin-bottom:32px}
 
@@ -59,7 +53,7 @@ label{font-weight:600;font-size:15px;display:grid;gap:6px}
 input,select{font:inherit;padding:14px;border:2px solid var(--line);background:var(--paper);color:var(--ink);border-radius:0}
 .ok{display:none;margin-top:16px;padding:16px;border-left:6px solid var(--red);background:var(--navy);color:#fff;max-width:460px}
 footer{padding:32px 0;color:var(--muted);font-size:14px}
-@media (max-width:640px){.hero .wrap{grid-template-columns:1fr}.pole{display:none}.brand{margin-bottom:32px}}
+@media (max-width:640px){.brand{margin-bottom:32px}.hero{background-position:60% center}}
 </style>
 </head>
 <body>
@@ -72,7 +66,6 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
       <p>Мужские стрижки, борода и бритьё опасной бритвой. Без очередей: записывайся на удобное время, мастер ждёт тебя к назначенной минуте.</p>
       <a class="btn" href="#zapis">Записаться</a>
     </div>
-    <div class="pole" aria-hidden="true"></div>
   </div>
 </header>
 
