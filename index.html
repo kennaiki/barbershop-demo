@@ -61,7 +61,7 @@ input,select{font:inherit;padding:14px;border:2px solid var(--line);background:v
 .day b{font-family:Oswald,sans-serif;font-size:22px}
 .on,.on small{background:var(--red);border-color:var(--red);color:#fff}
 .picked{font-weight:600;margin:4px 0}
-.grp{color:var(--muted);font-size:14px;margin:12px 0 6px}
+.grp{font-weight:600;font-size:15px;margin:16px 0 8px}
 .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
 .slot:disabled{opacity:.35;text-decoration:line-through;cursor:not-allowed}
 footer{padding:32px 0;color:var(--muted);font-size:14px}
@@ -216,14 +216,17 @@ function renderTimes(){
   var dur = DUR[svcEl.value], h = HOURS[selDate.d.getDay()], now = new Date();
   box.innerHTML = '';
   var pk = document.createElement('p'); pk.className = 'picked'; pk.textContent = fullDate(selDate.d); box.appendChild(pk);
-  [['Утро', 0, 720], ['День', 720, 1020], ['Вечер', 1020, 1440]].forEach(function(g){
+  var any = false;
+  [['Утро, до 12:00', 0, 720], ['День, 12:00–17:00', 720, 1020], ['Вечер, после 17:00', 1020, 1440]].forEach(function(g){
     var grid = document.createElement('div'); grid.className = 'slots';
     for (var m = h[0] * 60; m < h[1] * 60; m += 30){
       if (m < g[1] || m >= g[2]) continue;
       var t = hm(m), past = selDate.k === 0 && m < now.getHours() * 60 + now.getMinutes() + 60;
       var free = !past && m + dur <= h[1] * 60 && cells(m, dur).every(function(c){ return b.indexOf(c) < 0; });
+      if (!free) continue;
+      any = true;
       var btn = document.createElement('button');
-      btn.type = 'button'; btn.textContent = t; btn.disabled = !free;
+      btn.type = 'button'; btn.textContent = t;
       btn.className = 'slot' + (selTime === t ? ' on' : '');
       btn.onclick = (function(tt){ return function(){ selTime = tt; renderTimes(); }; })(t);
       grid.appendChild(btn);
@@ -233,6 +236,7 @@ function renderTimes(){
       box.appendChild(l); box.appendChild(grid);
     }
   });
+  if (!any){ var n = document.createElement('p'); n.textContent = 'На этот день свободного времени нет. Выберите другой день.'; box.appendChild(n); }
 }
 svcEl.addEventListener('change', function(){ selTime = null; renderTimes(); });
 
