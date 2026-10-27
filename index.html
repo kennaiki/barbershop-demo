@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Барбершоп «PBS» — стрижки и борода в центре города</title>
+<title>Барбершоп «Стрижки от kennai» — стрижки и борода в центре города</title>
 <meta name="description" content="Мужские стрижки, уход за бородой и бритьё опасной бритвой. Запись онлайн.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -89,6 +89,8 @@ input,select{font:inherit;padding:14px;border:2px solid var(--line);background:v
 .grp{font-weight:600;font-size:15px;margin:16px 0 8px}
 .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
 .slot:disabled{opacity:.35;text-decoration:line-through;cursor:not-allowed}
+.adm{display:inline-block;margin-top:14px;padding:9px 18px;border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--muted);font-size:14px}
+.adm:hover{border-color:var(--red);color:var(--ink)}
 footer{padding:32px 0;color:var(--muted);font-size:14px}
 @media (max-width:640px){.brand{margin-bottom:32px}.hero{background-position:60% center}}
 </style>
@@ -162,7 +164,9 @@ footer{padding:32px 0;color:var(--muted);font-size:14px}
 </main>
 
 <footer>
-  <div class="wrap">© <span id="fbrand"></span>. Учебный демо-проект. <a href="privacy.html">Политика конфиденциальности</a> · <a href="soglasie.html">Согласие на обработку данных</a></div>
+  <div class="wrap">© <span id="fbrand"></span>. Учебный демо-проект. <a href="privacy.html">Политика конфиденциальности</a> · <a href="soglasie.html">Согласие на обработку данных</a>
+    <div><a class="adm" href="admin.html">Вход для администратора</a></div>
+  </div>
 </footer>
 
 <script>
@@ -181,7 +185,8 @@ function parseHours(o){
 function start(CFG){
 var AHEAD = CFG.ahead, SHOP = CFG.shop;
 var SERVICES = CFG.services.map(function(s){ return {n: s.name, d: s.desc, m: s.minutes, p: s.price}; });
-var MASTERS = CFG.masters.map(function(m){ return {id: m.id, name: m.name, exp: m.exp, h: parseHours(m.hours)}; });
+var MASTERS = CFG.masters.map(function(m){ return {id: m.id, name: m.name, exp: m.exp, h: parseHours(m.hours)}; })
+  .filter(function(m){ return Object.keys(m.h).length; });
 var DUR = {}; SERVICES.forEach(function(s){ DUR[s.n] = s.m; });
 var brandText = 'Барбершоп «' + SHOP.name + '»';
 document.title = brandText + ' — стрижки и борода';
@@ -415,8 +420,8 @@ form.addEventListener('submit', async function(e){
 setMaster(MASTERS[0]);
 }
 
-fetch('config.json', {cache: 'no-cache'})
-  .then(function(r){ if (!r.ok) throw new Error('config.json: ' + r.status); return r.json(); })
+function getJson(u){ return fetch(u, {cache: 'no-cache'}).then(function(r){ if (!r.ok) throw new Error(u + ': ' + r.status); return r.json(); }); }
+getJson(WORKER_URL + '/config').catch(function(){ return getJson('config.json'); })
   .then(start)
   .catch(function(e){ console.error(e); document.getElementById('days').textContent = 'Не удалось загрузить настройки сайта. Позвоните нам.'; });
 </script>
